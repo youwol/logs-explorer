@@ -75,7 +75,7 @@ export const setup = {
     name:'@youwol/logs-explorer',
         assetId:'QHlvdXdvbC9sb2dzLWV4cGxvcmVy',
     version:'0.1.0-wip',
-    shortDescription:"",
+    shortDescription:"Logs explorer during consistency testing with py-youwol",
     developerDocumentation:'https://platform.youwol.com/applications/@youwol/cdn-explorer/latest?package=@youwol/logs-explorer',
     npmPackage:'https://www.npmjs.com/package/@youwol/logs-explorer',
     sourceGithub:'https://github.com/youwol/logs-explorer',
