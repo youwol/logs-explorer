@@ -82,13 +82,13 @@ export class LogsView implements VirtualDOM {
 
                 return new ImmutableTree.View<BaseNode>({
                     state,
-                    headerView: (state, node) => {
+                    headerView: (state, node: LogNode) => {
                         if (node instanceof RootLogNode) {
                             return { innerText: node.name }
                         }
                         return node.children
-                            ? new NodeView(node.content)
-                            : new LogView({ message: node.content })
+                            ? new NodeView({ node })
+                            : new LogView({ node })
                     },
                 })
             }),
@@ -119,8 +119,14 @@ export class BaseNode extends ImmutableTree.Node {
  * @category Nodes
  */
 export class LogNode extends BaseNode {
+    /**
+     * @group Immutable Constants
+     */
+    public readonly t0: number
+
     constructor(params: {
         id: string
+        t0: number
         name: string
         content: HttpModels.ResponseNode
         children
@@ -143,7 +149,12 @@ export class RootLogNode extends BaseNode {
      */
     public readonly name: string
 
-    constructor(params: { id: string; name: string; children }) {
+    /**
+     * @group Immutable Constants
+     */
+    public readonly t0: number
+
+    constructor(params: { id: string; name: string; children; t0 }) {
         super({
             id: params.id,
             name: params.name,
@@ -157,11 +168,13 @@ function createRootNode(logs: HttpModels.ResponseNodes) {
     const roots = logs.nodes.filter((n) => {
         return n.parentContextId == 'root' && n.labels.includes('Label.STARTED')
     })
+    const t0 = roots[0].timestamp
     return new RootLogNode({
         id: 'root',
+        t0,
         name: 'Logs',
         children: roots.map((log) => {
-            return createLogNode(log, logs.nodes)
+            return createLogNode(log, logs.nodes, t0)
         }),
     })
 }
@@ -169,18 +182,20 @@ function createRootNode(logs: HttpModels.ResponseNodes) {
 function createLogNode(
     log: HttpModels.ResponseNode,
     allLogs: HttpModels.ResponseNode[],
+    t0: number,
 ) {
     const nodes = allLogs
         .filter((l) => l.labels.includes('Label.STARTED'))
         .filter((l) => l.parentContextId == log.contextId)
-        .map((log) => createLogNode(log, allLogs))
+        .map((log) => createLogNode(log, allLogs, t0))
     const leaf = allLogs
         .filter((l) => !l.labels.includes('Label.STARTED'))
         .filter((l) => l.contextId == log.contextId)
-        .map((log) => createLeafNode(log))
+        .map((log) => createLeafNode(log, t0))
 
     return new LogNode({
         id: log.contextId,
+        t0,
         name: log.text,
         content: log,
         children: [...nodes, ...leaf].sort(
@@ -189,9 +204,10 @@ function createLogNode(
     })
 }
 
-function createLeafNode(log: HttpModels.ResponseNode) {
+function createLeafNode(log: HttpModels.ResponseNode, t0: number) {
     return new LogNode({
         id: log.contextId + '_' + log.timestamp,
+        t0,
         name: log.text,
         content: log,
         children: undefined,
@@ -216,8 +232,17 @@ export class NodeView implements VirtualDOM {
      */
     public readonly children: VirtualDOM[]
 
-    constructor(message: HttpModels.ResponseNode) {
+    /**
+     * @group Immutable Constants
+     */
+    public readonly node: LogNode
+
+    constructor(params: { node: LogNode }) {
+        Object.assign(this, params)
+        const message = this.node.content
+
         this.children = [
+            new TimeView({ node: this.node }),
             {
                 class: message['failed']
                     ? 'fas fa-times fv-text-error mr-2'
@@ -333,6 +358,46 @@ export const labelLogIcons = {
 /**
  * @category View
  */
+export class TimeView implements VirtualDOM {
+    /**
+     * @group Immutable DOM Constants
+     */
+    public readonly node: LogNode
+
+    /**
+     * @group Immutable DOM Constants
+     */
+    public readonly class =
+        'd-flex align-items-center mx-1 rounded px-1 fv-bg-background-alt'
+
+    /**
+     * @group Immutable DOM Constants
+     */
+    public readonly children: VirtualDOM[]
+
+    constructor(params: { node: LogNode }) {
+        Object.assign(this, params)
+        this.children = [
+            {
+                class: 'fas fa-stopwatch',
+            },
+            {
+                class: 'mx-1',
+            },
+            {
+                innerText: `${
+                    Math.floor(
+                        1e-3 * (this.node.content.timestamp - this.node.t0),
+                    ) / 1e3
+                }`,
+            },
+        ]
+    }
+}
+
+/**
+ * @category View
+ */
 export class LogView implements VirtualDOM {
     /**
      * @group Immutable DOM Constants
@@ -352,22 +417,23 @@ export class LogView implements VirtualDOM {
     /**
      * @group Immutable Constants
      */
-    public readonly message: HttpModels.ResponseNode
+    public readonly node: LogNode
 
-    constructor(params: { message: HttpModels.ResponseNode }) {
+    constructor(params: { node: LogNode }) {
         Object.assign(this, params)
-
-        this.style = this.message.labels.includes('Label.BASH')
+        const message = this.node.content
+        this.style = message.labels.includes('Label.BASH')
             ? { fontFamily: 'monospace', fontSize: 'x-small' }
             : {}
 
         this.children = [
+            new TimeView({ node: this.node }),
             {
                 class: 'd-flex',
                 children: [
                     {
                         class: 'd-flex flex-align-center px-2',
-                        children: this.message.labels
+                        children: message.labels
                             .filter((label) => labelLogIcons[label])
                             .map((label) => {
                                 return {
@@ -376,12 +442,12 @@ export class LogView implements VirtualDOM {
                             }),
                     },
                     {
-                        innerText: this.message.text,
+                        innerText: message.text,
                     },
                 ],
             },
-            this.message.data && Object.keys(this.message.data).length > 0
-                ? { class: 'mx-2', children: [new DataView(this.message.data)] }
+            message.data && Object.keys(message.data).length > 0
+                ? { class: 'mx-2', children: [new DataView(message.data)] }
                 : undefined,
         ]
     }
