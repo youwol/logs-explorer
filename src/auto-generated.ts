@@ -76,7 +76,7 @@ export const setup = {
         assetId:'QHlvdXdvbC9sb2dzLWV4cGxvcmVy',
     version:'0.1.0-wip',
     shortDescription:"Logs explorer during consistency testing with py-youwol",
-    developerDocumentation:'https://platform.youwol.com/applications/@youwol/cdn-explorer/latest?package=@youwol/logs-explorer',
+    developerDocumentation:'https://platform.youwol.com/applications/@youwol/cdn-explorer/latest?package=@youwol/logs-explorer&tab=doc',
     npmPackage:'https://www.npmjs.com/package/@youwol/logs-explorer',
     sourceGithub:'https://github.com/youwol/logs-explorer',
     userGuide:'https://l.youwol.com/doc/@youwol/logs-explorer',
@@ -91,7 +91,7 @@ export const setup = {
     },
 
     installMainModule: ({cdnClient, installParameters}:{
-        cdnClient:{install:(unknown) => Promise<Window>},
+        cdnClient:{install:(unknown) => Promise<WindowOrWorkerGlobalScope>},
         installParameters?
     }) => {
         const parameters = installParameters || {}
@@ -110,7 +110,7 @@ export const setup = {
     },
     installAuxiliaryModule: ({name, cdnClient, installParameters}:{
         name: string,
-        cdnClient:{install:(unknown) => Promise<Window>},
+        cdnClient:{install:(unknown) => Promise<WindowOrWorkerGlobalScope>},
         installParameters?
     }) => {
         const entry = secondaryEntries[name]
